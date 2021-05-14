@@ -28,6 +28,7 @@ type Request struct {
 	Conn        net.Conn
 	QueryParams url.Values
 	PathParams  map[string]string
+	Headers 	map[string]string
 }
 
 func (s *Server) Register(path string, handler HandleFunc) {
@@ -85,6 +86,18 @@ func (s *Server) handle(conn net.Conn) {
 	data := buf[:n]
 	requestLineDelim := []byte{'\r', '\n'}
 	requestLineEnd := bytes.Index(data, requestLineDelim)
+	headerPart := strings.Split(string(data),"\r\n")
+	headers := headerPart[1:]
+	result := make(map[string]string)
+	for _, header := range headers {
+		if header == "" {
+			continue
+		}
+		keyIndex := strings.Index(header, ":")
+		key := header[:keyIndex]
+		value := header[keyIndex+2:]
+		result[key] = value
+	}
 	if requestLineEnd == -1 {
 		log.Print("not found")
 		return
@@ -123,7 +136,7 @@ func (s *Server) handle(conn net.Conn) {
 		return
 	}
 
-	request := &Request{Conn: conn, QueryParams: query, PathParams: pathParams}
+	request := &Request{Conn: conn, QueryParams: query, PathParams: pathParams, Headers: result}
 	handler(request)
 }
 
